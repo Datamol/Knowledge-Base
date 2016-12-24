@@ -1,0 +1,218 @@
+---
+title: "5_Treating time more flexibly"
+author: "Amol Jadhav"
+date: "December 23, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+reading <- read.table(file.choose(), header=T, sep=",")
+
+reading[reading$id %in% c(4, 27, 31, 33, 41, 49, 69, 77, 87), ]
+```
+
+```{r}
+library(lattice)
+
+xyplot(piat~age | id, 
+   data=reading[reading$id %in% c(4, 27, 31, 33, 41, 49, 69, 77, 87), ],
+    panel=function(x,y, subscripts){panel.xyplot(x, y, pch=16)
+	panel.lmline(x,y, lty=4)
+    panel.xyplot(reading$agegrp[subscripts], y, pch=3)
+	panel.lmline(reading$agegrp[subscripts],y) }, 
+    ylim=c(0, 80), as.table=T, subscripts=T)
+
+# Creating the centered variables called agegrp.c and age.c
+mat2 <- reading[ ,3:4]-6.5
+dimnames(mat2)[[2]] <- c("agegrp.c", "age.c")  
+reading <- cbind(reading, mat2)
+
+#Using the agegrp variable.
+library(nlme)
+
+lme.agegrp <- lme(piat ~ agegrp.c, reading, random= ~ agegrp | id, method="ML")
+summary(lme.agegrp) # AIC 1831.949     BIC 1853.473    logLik -909.9746
+
+#Using the age variable.
+lme.age <- lme(piat ~ age.c, reading, random= ~ age | id, method="ML")
+summary(lme.age)   #AIC   1815.896   BIC   1837.419   logLik -901.9478
+
+```
+
+# Example 2
+```{r}
+wages <- read.table(file.choose(), header=T, sep=",")   #wages_pp.txt
+summary(wages)
+wages[wages$id %in% c(206, 332, 1028), c(1, 3, 2, 6, 8, 10)]
+```
+
+# Linear mixed-effect models
+```{r}
+#Model A
+model.a <- lme(lnw~exper, wages, random= ~exper | id, method="ML")
+summary(model.a)  #AIC  4933.394   BIC  4973.98  logLik -2460.697
+
+#Model B
+model.b <- update(model.a, lnw~exper*hgc.9+exper*black)
+summary(model.b)  #AIC 4893.751     BIC 4961.395   logLik -2436.876
+
+#Model C
+model.c <- update(model.b, lnw~exper+exper:black+hgc.9)
+summary(model.c)  #AIC 4890.704     BIC 4944.818    logLik -2437.352
+   
+```
+
+# Log wage trajectories for four prototypical dropouts from model C
+```{r}
+exper.seq <- seq(0, 12)
+fixef.c <- fixef(model.c)
+x.w9 <- fixef.c[[1]] + fixef.c[[2]]*exper.seq
+x.w12 <-  fixef.c[[1]] + fixef.c[[2]]*exper.seq + fixef.c[[3]]*3
+x.b9 <- fixef.c[[1]] + fixef.c[[2]]*exper.seq + fixef.c[[4]]*exper.seq
+x.b12 <- fixef.c[[1]] + fixef.c[[2]]*exper.seq + fixef.c[[3]]*3 + 
+         fixef.c[[4]]*exper.seq
+plot(exper.seq, x.w9, ylim=c(1.6, 2.4), ylab="LNW.hat", xlab="EXPER", type="l", lwd=2)
+lines(exper.seq, x.w12, lty=3)
+lines(exper.seq, x.b9, lty=4, lwd=2)
+lines(exper.seq, x.b12, lty=5)
+legend(0, 2.4, c("9th grade, White/Latino", "9th grade, Black", 
+       "12th grade, White/Latino", "12th grade, Black"), lty=c(1, 4, 3, 5))
+```
+
+
+# Example 3: Unemployment Data
+```{r}
+unemployment <- read.table(file.choose(), header=T, sep=",")  # unemployment_pp.txt
+summary(unemployment)
+unemployment[unemployment$id %in% c(7589, 55697, 67641, 65441, 53782),]
+```
+
+# Linear mixed-effect models
+```{r}
+#Model A
+model.a <- lme(cesd ~ months, unemployment, random= ~months|id, method="ML")
+summary(model.a) #AIC 5145.137     BIC 5172.217   logLik -2566.569
+
+#Model B
+model.b <- update(model.a, cesd~months+unemp)
+summary(model.b) # AIC 5121.603     BIC 5153.196   logLik -2553.802
+
+#Model C
+model.c <- update(model.b, cesd~months*unemp)
+summary(model.c)  #AIC 5119.047     BIC 5155.153    logLik -2551.523
+    
+#Model D
+model.d <- lme(cesd~unemp+unemp:months, unemployment, random=~unemp+unemp:months|id, control = list(optimizer = "nlm", msMaxIter = 100))
+summary(model.d)  # AIC 608.6906    BIC 643.744   logLik -294.3453
+  
+```
+
+
+# Plots
+```{r}
+#model B  Main Effects of Unemp and Time
+fixef.b <- fixef(model.b)
+months.seq <- seq(0, 14)
+unemp.b1 <- fixef.b[[1]] + fixef.b[[2]]*months.seq + fixef.b[[3]]
+unemp.b0 <- fixef.b[[1]] + fixef.b[[2]]*months.seq
+
+plot(months.seq, unemp.b1, type="l", ylim=c(5, 20), ylab="CES-D.hat", 
+     xlab="Months since job loss")
+lines(months.seq, unemp.b0, lty=3)
+legend(10, 20, c("Unemp = 1", "Unemp = 0"), lty=c(1, 3))
+title("Main Effects of Unemp and Time")
+
+
+#model C  Interaction Between Unemp and Time
+fixef.c <- fixef(model.c)
+unemp.c1 <- fixef.c[[1]] + fixef.c[[2]]*months.seq + fixef.c[[3]] +
+            fixef.c[[4]]*months.seq
+unemp.c0 <- fixef.c[[1]] + fixef.c[[2]]*months.seq
+
+plot(months.seq, unemp.c1, type="l", ylim=c(5, 20), ylab="CES-D.hat", 
+     xlab="Months since job loss")
+lines(months.seq, unemp.c0, lty=3)
+legend(10, 20, c("Unemp = 1", "Unemp = 0"), lty=c(1, 3))
+title("Interaction Between Unemp and Time")
+
+
+#model D - Effect of Time Among the Re-employed
+fixef.d <- fixef(model.d)
+unemp.d1 <- fixef.d[[1]] + fixef.d[[3]]*months.seq + fixef.d[[2]] 
+unemp.d0 <- rep(fixef.d[[1]], 15)
+
+plot(months.seq, unemp.d1, type="l", ylim=c(5, 20), ylab="CES-D.hat", 
+     xlab="Months since job loss")
+lines(months.seq, unemp.d0, lty=3)
+legend(10, 20, c("Unemp = 1", "Unemp = 0"), lty=c(1, 3))
+title("Constraining the Effect of Time Among the Re-employed")
+
+
+#Model A
+model.a <- lme(lnw~hgc.9+ue.7+exper+exper:black, wages, 
+           random=~exper|id, method="ML")
+summary(model.a) 
+
+#Model B
+model.b <- update(model.a, lnw~hgc.9+ue.mean+ue.person.cen+exper+exper:black)
+summary(model.b)
+
+#Model C
+model.c <- update(model.b, lnw~hgc.9+ue1+ue.centert1+exper+exper:black)
+summary(model.c)
+```
+
+
+# Example 4 : Medication data
+# Data import
+```{r}
+medication <- read.table(file.choose(), header=T, sep=",") #medication_pp.txt
+summary(medication)
+medication[c(1:6, 11, 16:21), c(3:8)]
+
+```
+
+# Linear mixed-effect model
+```{r}
+#Using time (Model A)
+model.a <- lme(pos~treat*time, medication, random= ~time|id, method="ML")
+summary(model.a)
+
+#Using time - 3.33 (Model B)
+model.b <- update(model.a, pos~treat*time333)
+summary(model.b)
+
+#Using time - 6.67 (Model C)
+model.c <- update(model.b, pos~treat*time667)
+summary(model.c)
+```
+
+# The vertical lines reflect the magnitude of the effect of treatment when time is centered at different values
+```{r}
+days.seq <- seq(0, 7)
+fixef.a <- fixef(model.a)
+
+trt <- fixef.a[[1]] + fixef.a[[2]] + (fixef.a[[3]]+fixef.a[[4]])*days.seq
+cnt <- fixef.a[[1]] + fixef.a[[3]]*days.seq
+
+plot(days.seq, trt, ylim=c(140, 190), xlim=c(0, 7), type="l", 
+     xlab="Days", ylab="POS.hat")
+lines(days.seq, cnt, lty=4)
+legend(0, 190, c("treatment", "control"), lty=c(1, 4))
+segments(0, fixef.a[[1]] + fixef.a[[3]]*0, 0, 
+        fixef.a[[1]] + fixef.a[[2]] + (fixef.a[[3]]+fixef.a[[4]])*0)
+segments(3.33, fixef.a[[1]] + fixef.a[[3]]*3.33, 3.33, 
+        fixef.a[[1]] + fixef.a[[2]] + (fixef.a[[3]]+fixef.a[[4]])*3.33)
+segments(6.670, fixef.a[[1]] + fixef.a[[3]]*6.670, 6.670, 
+        fixef.a[[1]] + fixef.a[[2]] + (fixef.a[[3]]+fixef.a[[4]])*6.670)
+```
+
+
+
+
+
+

@@ -178,7 +178,7 @@ legend(14, 2, c("COA=0, low peer", "COA=0, high peer",
 
 ```
 
-#
+# Model analysis
 ```{r}
 #creating the residuals (epsilon.hat)
 resid <- residuals(model.f)
@@ -226,5 +226,4 @@ plot(alcohol1$peer[alcohol1$age==14], ran[[2]], ylim=c(-1, 1),
      xlim=c(0, 3), ylab="ksi1i.hat", xlab="PEER")
 abline(h=0)
 ```
-
 
