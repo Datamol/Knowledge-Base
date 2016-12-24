@@ -1,0 +1,230 @@
+---
+title: "4_Data analysis multilevel model for change"
+author: "Amol Jadhav"
+date: "December 23, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# import Data
+```{r}
+alcohol1 <- read.table(file.choose(), header=T, sep=",")
+attach(alcohol1)
+``
+
+#Empirical growth plots with superimposed OLS trajectories
+```{r}
+
+library(lattice)
+
+xyplot(alcuse~age | id, 
+   data=alcohol1[alcohol1$id %in% c(4, 14, 23, 32, 41, 56, 65, 82), ], 
+   panel=function(x,y){
+	panel.xyplot(x, y)
+	panel.lmline(x,y)
+}, ylim=c(-1, 4), as.table=T)
+
+```
+
+# Fitted OLS trajectories displayed separately by coa status and peer levels. Upper left panel, coa=0
+```{r}
+alcohol.coa0 <- alcohol1[alcohol1$coa==0, ]
+
+#fitting the linear model by id
+f.coa0 <- by(alcohol.coa0, alcohol.coa0$id, 
+                function(data) fitted(lm(alcuse~age, data=data)))
+#transforming f.coa from a list to a vector and 
+#stripping of the names of the elements in the vector
+f.coa0 <- unlist(f.coa0)
+names(f.coa0) <- NULL
+
+#plotting the linear fit by id
+interaction.plot(alcohol.coa0$age, alcohol.coa0$id, f.coa0, 
+                 xlab="AGE", ylab="ALCUSE", ylim=c(-1, 4), lwd=1)
+title("COA=0")
+
+#2
+alcohol.coa1 <- alcohol1[alcohol1$coa==1, ]
+
+#fitting the linear model by id
+f.coa1 <- by(alcohol.coa1, alcohol.coa1$id, 
+             function(data) fitted(lm(alcuse~age, data=data)))
+#transforming f.coa1 from a list to a vector and 
+#stripping of the names of the elements in the vector
+f.coa1 <- unlist(f.coa1)
+names(f.coa1) <- NULL
+
+#plotting the linear fit by id
+interaction.plot(alcohol.coa1$age, alcohol.coa1$id, f.coa1, 
+                 xlab="AGE", ylab="ALCUSE", ylim=c(-1, 4), lwd=1)
+title("COA=1")
+mean(alcohol1$peer) #1.0175
+
+#3
+alcohol.lowpeer <- alcohol1[alcohol1$peer<=1.01756, ]
+
+#fitting the linear model by id
+f.lowpeer <- by(alcohol.lowpeer, alcohol.lowpeer$id, 
+             function(data) fitted(lm(alcuse~age, data=data)))
+#transforming f.lowpeer from a list to a vector and 
+#stripping of the names of the elements in the vector
+f.lowpeer <- unlist(f.lowpeer)
+names(f.lowpeer) <- NULL
+
+#plotting the linear fit by id
+interaction.plot(alcohol.lowpeer$age, alcohol.lowpeer$id, f.lowpeer, 
+                 xlab="AGE", ylab="ALCUSE", ylim=c(-1, 4), lwd=1)
+title("Low Peer")
+
+#4
+alcohol.hipeer <- alcohol1[alcohol1$peer>1.01756, ]
+
+#fitting the linear model by id
+f.hipeer <- by(alcohol.hipeer, alcohol.hipeer$id, 
+               function(data) fitted(lm(alcuse~age, data=data)))
+#transforming f.hipeer from a list to a vector and 
+#stripping of the names of the elements in the vector
+f.hipeer <- unlist(f.hipeer)
+names(f.hipeer) <- NULL
+
+#plotting the linear fit by id
+interaction.plot(alcohol.hipeer$age, alcohol.hipeer$id, f.hipeer, 
+                 xlab="AGE", ylab="ALCUSE", ylim=c(-1, 4), lwd=1)
+title("High Peer")
+
+```
+
+
+# Models
+```{r}
+#Model A
+library(nlme)
+
+model.a <- lme(alcuse~ 1, alcohol1, random= ~1 |id)
+summary(model.a)
+
+#Model B
+model.b <- lme(alcuse ~ age_14 , data=alcohol1, random= ~ age_14 | id, method="ML")
+summary(model.b)
+
+#Model C
+model.c <- lme(alcuse ~ coa*age_14 , data=alcohol1, random= ~ age_14 | id, method="ML")
+summary(model.c)
+
+#Model D
+model.d <- lme(alcuse ~ coa*age_14+peer*age_14 , data=alcohol1, random= ~ age_14 | id, method="ML")
+summary(model.d)
+
+#Model E
+model.e <- lme(alcuse ~ coa+peer*age_14 , data=alcohol1, random= ~ age_14 | id, method="ML")
+summary(model.e)
+
+#Model F
+model.f <- lme(alcuse ~ coa+cpeer*age_14 , data=alcohol1, random= ~ age_14 | id, method="ML")
+summary(model.f)
+
+#Model G
+model.g <- lme(alcuse ~ ccoa+cpeer*age_14 , data=alcohol1, random= ~ age_14 | id, method="ML")
+summary(model.g)
+```
+
+# Plots
+```{r}
+# Unconditional growth model
+fixef.b <- fixef(model.b)
+fit.b <- fixef.b[[1]] + alcohol1$age_14[1:3]*fixef.b[[2]]
+plot(alcohol1$age[1:3], fit.b, ylim=c(0, 2), type="b", 
+     ylab="predicted alcuse", xlab="age")   
+title("Model B \n Unconditional growth model")
+
+# uncontrolled effects
+fixef.c <- fixef(model.c)
+fit.c0 <- fixef.c[[1]] + alcohol1$age_14[1:3]*fixef.c[[3]]
+fit.c1 <- fixef.c[[1]] + fixef.c[[2]] + 
+          alcohol1$age_14[1:3]*fixef.c[[3]] +
+          alcohol1$age_14[1:3]*fixef.c[[4]]
+plot(alcohol1$age[1:3], fit.c0, ylim=c(0, 2), type="b", 
+     ylab="predicted alcuse", xlab="age")
+lines(alcohol1$age[1:3], fit.c1, type="b", pch=17)   
+title("Model C \n Uncontrolled effects of COA") 
+legend(14, 2, c("COA=0", "COA=1")
+
+# Model for the controlled effects of COA
+library(nlme)
+fixef.e <- fixef(model.e)
+fit.ec0p0 <- fixef.e[[1]] + .655*fixef.e[[3]] +
+             alcohol1$age_14[1:3]*fixef.e[[4]] +
+             .655*alcohol1$age_14[1:3]*fixef.e[[5]]   
+fit.ec0p1 <- fixef.e[[1]] + 1.381*fixef.e[[3]] +
+             alcohol1$age_14[1:3]*fixef.e[[4]] +
+             1.381*alcohol1$age_14[1:3]*fixef.e[[5]] 
+fit.ec1p0 <- fixef.e[[1]] + fixef.e[[2]] + .655*fixef.e[[3]] +
+             alcohol1$age_14[1:3]*fixef.e[[4]] +
+             .655*alcohol1$age_14[1:3]*fixef.e[[5]] 
+fit.ec1p1 <- fixef.e[[1]] + fixef.e[[2]] + 1.381*fixef.e[[3]] +
+             alcohol1$age_14[1:3]*fixef.e[[4]] +
+             1.381*alcohol1$age_14[1:3]*fixef.e[[5]]
+plot(alcohol1$age[1:3], fit.ec0p0, ylim=c(0, 2), type="b", 
+     ylab="predicted alcuse", xlab="age", pch=2)
+lines(alcohol1$age[1:3], fit.ec0p1, type="b", pch=0)   
+lines(alcohol1$age[1:3], fit.ec1p0, type="b", pch=17)   
+lines(alcohol1$age[1:3], fit.ec1p1, type="b", pch=15)   
+title("Model E \n *Final* model for the controlled effects of COA") 
+legend(14, 2, c("COA=0, low peer", "COA=0, high peer", 
+       "COA=1, low peer", "COA=1, high peer"))
+
+```
+
+#
+```{r}
+#creating the residuals (epsilon.hat)
+resid <- residuals(model.f)
+qqnorm(resid)
+
+#creating the standardized residual (std epsilon.hat)
+resid.std <- resid/sd(resid)
+plot(alcohol1$id, resid.std, ylim=c(-3, 3), ylab="std epsilon hat")
+abline(h=0)
+
+#extracting the random effects of model f
+ran <- random.effects(model.f)
+qqnorm(ran[[1]])
+
+#standardizing the ksi0i.hat
+ran1.std <- ran[[1]]/sd(ran[[1]])
+plot(alcohol1$id[alcohol1$age==14], ran1.std, ylim=c(-3, 3), ylab="std psi_0i hat")
+abline(h=0)
+
+qqnorm(ran[[2]])
+
+#standardizing the ksi1i.hat
+ran2.std <- ran[[2]]/sd(ran[[2]])
+plot(id[alcohol1$age==14], ran2.std, ylim=c(-3, 3), ylab="std psi_1i hat")
+abline(h=0)
+
+plot(alcohol1$age, resid, ylim=c(-2, 2), ylab="epsilon.hat", 
+     xlab="AGE")
+abline(h=0)
+
+plot(alcohol1$coa[alcohol1$age==14], ran[[1]], ylim=c(-1, 1), 
+     ylab="ksi0i.hat", xlab="COA")
+abline(h=0)
+
+plot(alcohol1$peer[alcohol1$age==14], ran[[1]], ylim=c(-1, 1), 
+     xlim=c(0, 3), ylab="ksi0i.hat", xlab="PEER")
+abline(h=0)
+
+
+plot(alcohol1$coa[alcohol1$age==14], ran[[2]], ylim=c(-1, 1), 
+     ylab="ksi1i.hat", xlab="COA")
+abline(h=0)
+
+plot(alcohol1$peer[alcohol1$age==14], ran[[2]], ylim=c(-1, 1), 
+     xlim=c(0, 3), ylab="ksi1i.hat", xlab="PEER")
+abline(h=0)
+```
+
+
