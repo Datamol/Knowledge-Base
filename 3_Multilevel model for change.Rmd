@@ -1,0 +1,121 @@
+---
+title: "3_Multilevel model for change"
+author: "Amol Jadhav"
+date: "December 23, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Import Data
+```{r}
+#library(foreign)
+#early.int <- read.dta(file.choose())
+#write.csv(early.int, file = "early_int.csv")
+early.int <- read.csv(file.choose(), header=T)
+head(early.int)
+names(early.int)[1] <- "obs"
+attach(early)
+early.int1 <- early.int[1:24, 1:5]
+early.int1                        
+```
+
+# OLS trajectories superimposed on the empirical growth plots
+```{r}
+xyplot(cog~age | id, data=early.int1, 
+  panel = function(x, y){
+    panel.xyplot(x, y)
+    panel.lmline(x, y)
+  }, ylim=c(50, 150), as.table=T)
+```
+
+# Fitted OLS trajectories and stem plots of fitted initial status and fitted rate of change by id
+```{r}
+#fitting the linear model by id
+fit <- by(early.int, early.int$id, function(data) fitted.values(lm(cog ~ age, data=data)))  
+fit1 <- unlist(fit)
+names(fit1) <- NULL
+
+#plotting the linear fit by id
+interaction.plot(early.int$age, early.int$id, fit1, xlab="AGE", ylab="COG", ylim=c(50, 150))
+```
+
+# plot for fitted initial value
+```{r}
+int <- by(early.int, early.int$id, 
+          function(data) coefficients(lm(cog ~ age, data=data))[[1]] )  
+int <- unlist(int)
+names(int) <- NULL
+plot(int)
+
+# plot for fitted rate of change
+rate <- by(early.int, early.int$id, 
+          function(data) coefficients(lm(cog ~ age, data=data))[[2]] )  
+rate <- unlist(rate)
+names(rate) <- NULL
+plot(rate)
+
+# plot for sigma.sq
+sig <- by(early.int, early.int$id, 
+          function(data) (summary(lm(cog ~ age, data=data))$sigma)^2 )  
+sig <- unlist(sig)
+names(sig) <- NULL
+plot(sig)
+```
+
+# Fitted OLS trajectories for program=0; the bottom panel represents fitted OLS trajectories for program=1
+```{r}
+#fitting the linear model by id, program=0
+early.p0 <- early.int[early.int$program==0, ]
+
+fit.p0 <- by(early.p0, early.p0$id, 
+          function(data) fitted(lm(cog ~ age, data=data)))  
+fit.p0 <- unlist(fit.p0)
+names(fit.p0) <- NULL
+
+#appending the average for the whole group
+lm.p0 <- fitted( lm(cog ~ age, data=early.p0) )
+names(lm.p0) <- NULL
+fit.p0 <- c(fit.p0, lm.p0[1:3])
+age.p0 <- c(early.p0$age, c(0, .5, 1))
+id.p0 <- c(early.p0$id, rep(1111, 3))
+
+#plotting the linear fit by id
+interaction.plot(age.p0, id.p0, fit.p0, 
+                 xlab="AGE", ylab="COG", ylim=c(50, 150))
+
+#fitting the linear model by id, program=1
+early.p1 <- early.int[early.int$program==1, ]
+
+fit.p1 <- by(early.p1, early.p1$id, 
+          function(data) fitted.values(lm(cog ~ age, data=data)))  
+fit.p1 <- unlist(fit.p1)
+names(fit.p1) <- NULL
+
+#appending the average for the whole group
+lm.p1 <- fitted( lm(cog ~ age, data=early.p1) )
+names(lm.p1) <- NULL
+fit.p1 <- c(fit.p1, lm.p1[1:3])
+age.p1 <- c(early.p1$age, c(1, 1.5, 2))
+id.p1 <- c(early.p1$id, rep(1111, 3))
+
+#plotting the linear fit by id
+interaction.plot(age.p1, id.p1, fit.p1, 
+                 xlab="AGE", ylab="COG", ylim=c(50, 150))
+```
+
+
+```{r}
+library(nlme)
+attach(early.int)
+model1<- lme(cog ~ time*program, data = early.int, random= ~ time | id, method="ML")
+summary(model1)
+
+a<-fitted.values(lme(cog~time*program, data=early.int, random= ~time | id, method="REML"))
+a<-unlist(a)
+interaction.plot(early.int$age, early.int$program, a, xlab="AGE", ylab="COG", 
+                 ylim=c(50, 150), lwd=4, lty=1, col=4:5)
+```
+
