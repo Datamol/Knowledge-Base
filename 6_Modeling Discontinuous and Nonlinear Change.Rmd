@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 # Discontinuous Individual Change
 ## Example 1 : Wages data
 
-# Import data
+## Import data
 ```{r}
 wages <- read.table(choose.files(), header=T, sep=",") #wages_pp.txt
 summary(wages)
@@ -21,7 +21,7 @@ print(wages[wages$id %in% c(206,2365,4384),c(1:5, 16)])
 ```
 
 
-# Models
+## Models
 ```{r}
 model.a <- lme(lnw~exper+hgc.9+exper:black+ue.7, wages, random= ~exper | id, method="ML") 
 2*model.a$logLik # -4830.519
@@ -64,15 +64,15 @@ model.h <- lme(lnw~exper+hgc.9+exper:black+ue.7+postexp+ged, wages, random= ~exp
 
 anova(model.f, model.h)
 
-***model.i <- lme(lnw~exper+hgc.9+exper:black+ue.7+ged+exper:ged, wages, random= ~exper+ged+exper:ged | id, method="ML")
+model.i <- lme(lnw~exper+hgc.9+exper:black+ue.7+ged+exper:ged, wages, random= ~exper+ged+exper:ged | id, method="ML")
 2*model.i$logLik # -4798.705
 
-***anova(model.b, model.i)
+anova(model.b, model.i)
 
 model.j <- lme(lnw~exper+hgc.9+exper:black+ue.7+ged+exper:ged, wages, random= ~exper+ged | id, method="ML")
 2*model.j$logLik # -4804.601
 
-***anova(model.i, model.j)
+anova(model.i, model.j)
 
 summary(model.f)
 ```
@@ -81,7 +81,7 @@ summary(model.f)
 # Individual change using a polynomial function of time 
 ## Example 2: External dataset
 
-# Import Data
+## Import Data
 ```{r}
 external <- read.table(file.choose(), header=T, sep=",") #external_pp.txt
 summary(external$GRADE)
@@ -175,13 +175,13 @@ legend(1, 60, c("quadratic fit"), lty=1)
 
 ```
 
-# Creating the higher order terms for time in the external data set
+## Creating the higher order terms for time in the external data set
 ```{r}
 external$TIME2 <- external$TIME^2
 external$TIME3 <- external$TIME^3
 ```
 
-# Models
+## Models
 ```{r}
 # Comparison of fitting alternative polynomial change trajectories to the external data set
 
@@ -203,19 +203,19 @@ summary(model.d)
 # Truly Non-linear trajectories
 ## Example 3: Fox and geese data
 
-# Import data
+## Import data
 ```{r}
 fg <- read.table(file.choose(), header=T, sep=",") #foxngeese_pp.txt
 summary(fg)
 ```
 
-# Empirical growth plots for 8 children in the fox and geese data
+## Empirical growth plots for 8 children in the fox and geese data
 ```{r}
 xyplot(nmoves~game | id, data=fg[fg$id %in% c(1, 4, 6, 7, 8, 11, 12, 15), ], ylim=c(0, 25), as.table=T)
 
 ```
 
-# Nonlinear mixed-effects models
+## Nonlinear mixed-effects models
 ```{r}
 # Model eqn: Yij = 1 + 19/(1 + π0*exp(- (π1+u1)*Time - u0)) + εij
 
@@ -232,7 +232,7 @@ model.b <- nlme(nmoves~ 1 + 19/(1+xmid*exp(-scal10*game -scal01*read -scal11*rea
 summary(model.b)
 ```
 
-# Logistic growth plots
+## Logistic growth plots
 ```{r}
 # Model A - Unconditional logistic growth
 fixef.a <- fixef(model.a)
