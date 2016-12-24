@@ -1,0 +1,259 @@
+---
+title: "6_Modeling Discontinuous and Nonlinear Change"
+author: "Amol Jadhav"
+date: "December 23, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Discontinuous Individual Change
+## Example 1 : Wages data
+
+# Import data
+```{r}
+wages <- read.table(choose.files(), header=T, sep=",") #wages_pp.txt
+summary(wages)
+wages$ged.exper <- wages$ged*wages$exper
+print(wages[wages$id %in% c(206,2365,4384),c(1:5, 16)])
+```
+
+
+# Models
+```{r}
+model.a <- lme(lnw~exper+hgc.9+exper:black+ue.7, wages, random= ~exper | id, method="ML") 
+2*model.a$logLik # -4830.519
+
+model.b <- lme(lnw~exper+hgc.9+exper:black+ue.7+ged, wages, random= ~ exper+ged | id, method="ML")
+2*model.b$logLik # -4805.517
+
+anova(model.a, model.b)
+
+model.c <- lme(lnw~exper+hgc.9+exper:black+ue.7+ged, wages, random= ~ exper | id, method="ML")
+2*model.c$logLik # -4818.324
+
+anova(model.b, model.c)
+
+model.d <- lme(lnw~exper+hgc.9+exper:black+ue.7+postexp, wages, random= ~exper+postexp | id, method="ML")
+2*model.d$logLik # -4817.377
+
+anova(model.a, model.d)
+
+model.e <- lme(lnw~exper+hgc.9+exper:black+ue.7+postexp, wages, random= ~exper | id, method="ML")
+2*model.e$logLik  # -4820.706
+
+anova(model.d, model.e)
+
+
+model.f <- lme(lnw~exper+hgc.9+exper:black+ue.7+postexp+ged, wages, random= ~exper+postexp+ged | id, method="ML")
+2*model.f$logLik # -588.7033
+
+anova(model.b, model.f)
+
+anova(model.d, model.f)
+
+model.g <- lme(lnw~exper+hgc.9+exper:black+ue.7+postexp+ged, wages, random= ~exper+ged | id, method="ML")
+2*model.g$logLik # -4802.688
+
+anova(model.f, model.g)
+
+model.h <- lme(lnw~exper+hgc.9+exper:black+ue.7+postexp+ged, wages, random= ~exper+postexp | id, method="ML")
+2*model.h$logLik # -4812.639
+
+anova(model.f, model.h)
+
+***model.i <- lme(lnw~exper+hgc.9+exper:black+ue.7+ged+exper:ged, wages, random= ~exper+ged+exper:ged | id, method="ML")
+2*model.i$logLik # -4798.705
+
+***anova(model.b, model.i)
+
+model.j <- lme(lnw~exper+hgc.9+exper:black+ue.7+ged+exper:ged, wages, random= ~exper+ged | id, method="ML")
+2*model.j$logLik # -4804.601
+
+***anova(model.i, model.j)
+
+summary(model.f)
+```
+
+
+# Individual change using a polynomial function of time 
+## Example 2: External dataset
+
+# Import Data
+```{r}
+external <- read.table(file.choose(), header=T, sep=",") #external_pp.txt
+summary(external$GRADE)
+
+attach(external)
+# Creating the higher order variables for grade.
+library(nlme)
+external$GRADE2 <- external$GRADE^2
+external$GRADE3 <- external$GRADE^3
+external$GRADE4 <- external$GRADE^4
+summary(external)
+```
+
+
+```{r}
+# Person A, ID =1
+fit1 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2, external[external$ID==1,]))
+fit1.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==1,]))
+
+plot(spline(external[external$ID==1,]$GRADE, fit1), type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+lines(spline(external[external$ID==1,]$GRADE, fit1.4), type="l", lty=3)
+points(external[external$ID==1,]$GRADE, external[external$ID==1,]$EXTERNAL, pch=16)
+title("Person A, id=1")
+legend(1, 10, c("quadratic fit", "quartic fit"), lty=c(1, 3))
+
+# Person B, ID =6
+fit2 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2, external[external$ID==6,]))
+fit2.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==6,]))
+
+plot(spline(external[external$ID==6,]$GRADE, fit2), type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+lines(spline(external[external$ID==6,]$GRADE, fit2.4), type="l", lty=3)
+points(external[external$ID==6,]$GRADE, external[external$ID==6,]$EXTERNAL, pch=16)
+title("Person B, id=6")
+legend(1, 60, c("quadratic fit", "quartic fit"), lty=c(1, 3))
+
+# Person C, ID = 11
+fit3 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2, external[external$ID==11,]))
+fit3.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==11,]))
+
+plot(external[external$ID==11,]$GRADE, fit3, type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+lines(spline(external[external$ID==11,]$GRADE, fit3.4), type="l", lty=3)
+points(external[external$ID==11,]$GRADE, external[external$ID==11,]$EXTERNAL, pch=16)
+title("Person C, id=11")
+legend(1, 60, c("linear fit", "quadratic fit"), lty=c(1, 3))
+
+# Person D, ID = 25
+fit4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2, external[external$ID==25,]))
+fit4.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==25,]))
+
+plot(external[external$ID==25,]$GRADE, fit4, type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+lines(spline(external[external$ID==25,]$GRADE, fit4.4), type="l", lty=3)
+points(external[external$ID==25,]$GRADE, external[external$ID==25,]$EXTERNAL, pch=16)
+title("Person D, id=25")
+legend(1, 60, c("linear fit", "quadratic fit"), lty=c(1, 3))
+
+# Person 5, ID = 34
+fit5 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2, external[external$ID==34,]))
+fit5.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==34,]))
+
+plot(spline(external[external$ID==34,]$GRADE, fit5), type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+lines(spline(external[external$ID==34,]$GRADE, fit5.4), type="l", lty=3)
+points(external[external$ID==34,]$GRADE, external[external$ID==34,]$EXTERNAL, pch=16)
+title("Person E, id=34")
+legend(1, 60, c("cubic fit", "quadratic fit"), lty=c(1, 3))
+
+# Person 6, ID = 36
+fit6.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==36,]))
+
+plot(spline(external[external$ID==36,]$GRADE, fit6.4), type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+points(external[external$ID==36,]$GRADE, external[external$ID==36,]$EXTERNAL, pch=16)
+title("Person F, id=36")
+legend(1, 60, c("quadratic fit"), lty=1)
+
+# Person 7, ID = 40
+fit7 <- fitted.values(lm(EXTERNAL~GRADE + GRADE2, external[external$ID==40,]))
+fit7.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==40,]))
+
+plot(spline(external[external$ID==40,]$GRADE, fit7), type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+lines(spline(external[external$ID==40,]$GRADE, fit7.4), type="l", lty=3)
+points(external[external$ID==40,]$GRADE, external[external$ID==40,]$EXTERNAL, pch=16)
+title("Person G, id=40")
+legend(1, 60, c("quadratic fit", "quadratic fit"), lty=c(1, 3))
+
+# Person 8, ID = 26
+fit8.4 <- fitted.values(lm(EXTERNAL ~ GRADE + GRADE2 + GRADE3 + GRADE4, external[external$ID==26,]))
+
+plot(spline(external[external$ID==26,]$GRADE, fit8.4), type="l", ylim=c(0, 60), ylab="external", xlab="grade")
+points(external[external$ID==26,]$GRADE, external[external$ID==26,]$EXTERNAL, pch=16)
+title("Person H, id=26")
+legend(1, 60, c("quadratic fit"), lty=1)
+
+```
+
+# Creating the higher order terms for time in the external data set
+```{r}
+external$TIME2 <- external$TIME^2
+external$TIME3 <- external$TIME^3
+```
+
+# Models
+```{r}
+# Comparison of fitting alternative polynomial change trajectories to the external data set
+
+model.a <- lme(EXTERNAL ~ 1, random =  ~ 1 | ID, method = "ML", external)
+summary(model.a)
+
+model.b <- lme(EXTERNAL ~ TIME, random =  ~ TIME | ID, method = "ML", external)
+summary(model.b)
+
+model.c <- lme(EXTERNAL ~ TIME+TIME2, random =  ~ TIME+TIME2 | ID, method = "ML", external)
+summary(model.c)
+
+model.d <- lme(EXTERNAL ~ TIME + TIME2 + TIME3, random =  ~ TIME+TIME2+TIME3 | ID, method = "ML", external)
+update(model.a, formula = EXTERNAL ~ TIME + TIME2 + TIME3, random =  ~ TIME + TIME2 + TIME3 | ID)
+summary(model.d)
+```
+
+
+# Truly Non-linear trajectories
+## Example 3: Fox and geese data
+
+# Import data
+```{r}
+fg <- read.table(file.choose(), header=T, sep=",") #foxngeese_pp.txt
+summary(fg)
+```
+
+# Empirical growth plots for 8 children in the fox and geese data
+```{r}
+xyplot(nmoves~game | id, data=fg[fg$id %in% c(1, 4, 6, 7, 8, 11, 12, 15), ], ylim=c(0, 25), as.table=T)
+
+```
+
+# Nonlinear mixed-effects models
+```{r}
+# Model eqn: Yij = 1 + 19/(1 + π0*exp(- (π1+u1)*Time - u0)) + εij
+
+model.a <- nlme(nmoves~ 1 + 19/ (1 + xmid*exp( -scal*game + u)),
+        fixed=scal+xmid~1, random= scal+u~1 |id, 
+        start=c(scal=.2, xmid=12), data=fg)
+
+summary(model.a)
+
+model.b <- nlme(nmoves~ 1 + 19/(1+xmid*exp(-scal10*game -scal01*read -scal11*read*game + u)),
+           fixed=scal10+scal01+scal11+xmid~1, random= scal10+u~1 |id, 
+           start=c(scal10=.12, scal01= -.4, scal11= .04, xmid=12), data=fg)
+
+summary(model.b)
+```
+
+# Logistic growth plots
+```{r}
+# Model A - Unconditional logistic growth
+fixef.a <- fixef(model.a)
+fit.a <- 1 + 19/(1 + fixef.a[[2]]*exp(-fixef.a[[1]]*fg$game[1:27]))
+
+plot(fg$game[1:27], fit.a, ylim=c(0, 25), type="l", ylab="predicted nmoves", xlab="game")
+title("Model A \n Unconditional logistic growth")
+
+# Model B - Fitted logistic growth by reading level
+
+fixef.b <- fixef(model.b)
+fit.b.high <- 1 + 19/(1+fixef.b[[4]]*exp(-fixef.b[[1]]*fg$game[1:27] - fixef.b[[2]]*1.58 - fixef.b[[3]]*1.58*fg$game[1:27]))
+
+fit.b.low <- 1 + 19/(1+fixef.b[[4]]*exp(-fixef.b[[1]]*fg$game[1:27] - fixef.b[[2]]*(-1.58) - fixef.b[[3]]*(-1.58)*fg$game[1:27]))
+
+plot(fg$game[1:27], fit.b.high, ylim=c(0, 25), type="l", 
+     ylab="predicted nmoves", xlab="game")
+lines(fg$game[1:27], fit.b.low, lty=3)
+
+title("Model B \n Fitted logistic growth by reading level")
+legend(1, 25, c("High Reading level","Low reading level"), lty=c(1, 3))
+```
+
+
